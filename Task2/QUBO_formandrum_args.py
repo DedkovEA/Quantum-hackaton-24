@@ -7,12 +7,12 @@ import argparse
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("Pv", type=float)
-parser.add_argument("Py", type=float)
-parser.add_argument("P1", type=float)
-parser.add_argument("P2", type=float)
-parser.add_argument("P3", type=float)
-parser.add_argument("MAX_INT", type=int)
+parser.add_argument("Pv")
+parser.add_argument("Py")
+parser.add_argument("P1")
+parser.add_argument("P2")
+parser.add_argument("P3")
+parser.add_argument("MAX_INT")
 parser.add_argument("--out_file")
 
 args = parser.parse_args()
