@@ -11,8 +11,8 @@ L2FT = 0
 FREE_TERM = 0
 
 MAX_INT = 100
-nodes_frame = pd.read_csv("task-2-nodes.csv", header=None, index_col=0).sort_values(1)
-edges_frame = pd.read_csv("task-2-adjacency_matrix.csv", index_col=0, na_values=["-"])
+nodes_frame = pd.read_csv("/workspace/task-2-nodes.csv", header=None, index_col=0).sort_values(1)
+edges_frame = pd.read_csv("/workspace/task-2-adjacency_matrix.csv", index_col=0, na_values=["-"])
 
 # Sorting nodes such that initial is 0, and all crossings are at the beginning
 initial_node = "Вокзал"
@@ -20,6 +20,7 @@ node_names = nodes_frame.index.tolist()
 node_names.remove(initial_node)
 node_names.insert(0, initial_node)
 assert len(node_names) == 57 and node_names[0]==initial_node, "Sonething goes wrong with reordering initial node"
+print(node_names)
 
 A = edges_frame.reindex(index=node_names, columns=node_names).to_numpy(na_value=MAX_INT, copy=True).astype(int)
 B = nodes_frame.reindex(index=node_names).to_numpy(na_value=MAX_INT, copy=True).astype(int).reshape((-1))
@@ -116,58 +117,37 @@ Lv_ft = NUM_BUSES * NUM_TACTS
 Ly_ft = NUM_BUSES
 L2_ft = NUM_SIGHTS
 
-def update_free_terms():
-    with open("weights.json") as f:
-        weights = json.load(f)
-        Pv = weights["Pv"]
-        Py = weights["Py"]
-        P1 = weights["P1"]
-        P2 = weights["P2"]
-        P3 = weights["P3"] 
-    global LvFT
-    global LyFT
-    global L2FT
-    global FREE_TERM
-    LvFT = Lv_ft*Pv
-    LyFT = Ly_ft*Py
-    L2FT = L2_ft*P2
-    FREE_TERM = LvFT + LyFT + L2FT
-    return
+with open("/workspace/weights.json") as f:
+    weights = json.load(f)
+    Pv = weights["Pv"]
+    Py = weights["Py"]
+    P1 = weights["P1"]
+    P2 = weights["P2"]
+    P3 = weights["P3"] 
+LvFT = Lv_ft*Pv
+LyFT = Ly_ft*Py
+L2FT = L2_ft*P2
+FREE_TERM = LvFT + LyFT + L2FT
 
 
-def QUBO_update():
-    global H, Lv, Ly, L1, L2, L3
+# Combining
+print("Combining")
 
-    # Combining
-    print("Combining")
-    update_free_terms()
+LvFT = Lv_ft*Pv
+LyFT = Ly_ft*Py
+L2FT = L2_ft*P2
+FREE_TERM = LvFT + LyFT + L2FT   
 
-    with open("weights.json") as f:
-        weights = json.load(f)
-        Pv = weights["Pv"]
-        Py = weights["Py"]
-        P1 = weights["P1"]
-        P2 = weights["P2"]
-        P3 = weights["P3"] 
-    global LvFT
-    global LyFT
-    global L2FT
-    global FREE_TERM
-    LvFT = Lv_ft*Pv
-    LyFT = Ly_ft*Py
-    L2FT = L2_ft*P2
-    FREE_TERM = LvFT + LyFT + L2FT   
+Qnp = H + Pv*Lv + Py*Ly + P1*L1 + P2*L2 + P3*L3
+Qnp = np.triu(Qnp + np.triu(Qnp.T, 1))
 
-    Qnp = H + Pv*Lv + Py*Ly + P1*L1 + P2*L2 + P3*L3
-    Qnp = np.triu(Qnp + np.triu(Qnp.T, 1))
+Q = sp.sparse.coo_array(Qnp)
 
-    Q = sp.sparse.coo_array(Qnp)
-
-    print("Start writing file")
-    with open("Qmat.txt", mode='wt') as out_f:
-        out_f.write(f"{SHAPE} {len(Q.row)}\n")
-        for c,r,d in zip(Q.col, Q.row, Q.data):
-            out_f.write(f"{r+1} {c+1} {d}\n")
+print("Start writing file")
+with open("/workspace/Qmat.txt", mode='wt') as out_f:
+    out_f.write(f"{SHAPE} {len(Q.row)}\n")
+    for c,r,d in zip(Q.col, Q.row, Q.data):
+        out_f.write(f"{r+1} {c+1} {d}\n")
 
 
 
@@ -176,7 +156,7 @@ def check_constraints(Lmat, vec, free_term=0):
 
 
 def verify_constraints():
-    with open("output.json", mode='rt') as in_f:
+    with open("/workspace/output.json", mode='rt') as in_f:
         res = json.load(in_f)
     sol_vec = np.asarray(res["Solution"], dtype=int)
     print("Objective is " + str(res["Objective"] + FREE_TERM))
@@ -188,20 +168,5 @@ def verify_constraints():
     return
 
 
-while(1):
-    time.sleep(2)
-    
-    cmd = ""
-    with open("cmd_in.txt") as cmd_f:
-        cmd = cmd_f.readline().strip()
-    # cmd = input("Enter operation: ")
-    if cmd == "q":
-        break
-    elif cmd == "um":
-        QUBO_update()
-    elif cmd == "vc":
-        verify_constraints()
-    elif cmd == "uft":
-        update_free_terms()
-    else:
-        print("On pause...")
+
+verify_constraints()
